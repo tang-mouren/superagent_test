@@ -1,0 +1,7 @@
+[
+  {"date": "2026-10-30", "category": "餐饮", "cents": 1800, "note": "晚饭"},
+  {"date": "2026-10-31", "category": "学习", "cents": 3900, "note": "技术书"},
+  {"date": "2026-11-01", "category": "餐饮", "cents": 1250, "note": "午饭"},
+  {"date": "2026-11-02", "category": "交通", "cents": 400, "note": "地铁"},
+  {"date": "2026-11-03", "category": "其他", "cents": 600, "note": "打印材料"}
+]
