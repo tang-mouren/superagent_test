@@ -18,6 +18,10 @@
 python3 ledger.py --file examples/expenses.json list
 python3 ledger.py --file examples/expenses.json summary
 
+# 按月份筛选，只看指定 YYYY-MM 月份的支出
+python3 ledger.py --file examples/expenses.json list --month 2026-11
+python3 ledger.py --file examples/expenses.json summary --month 2026-11
+
 # 添加自己的支出，默认存入 data/expenses.json（不进 Git）
 python3 ledger.py add 12.50 --category 餐饮 --date 2026-11-03 --note 午饭
 python3 ledger.py list
@@ -27,7 +31,7 @@ python3 ledger.py summary
 python3 -m unittest -v
 ```
 
-类别：餐饮、交通、学习、其他。金额内部使用整数分，避免浮点累计误差。日期采用 ISO 格式；正常用法为 `YYYY-MM-DD`。`--file` 是全局参数，放在子命令之前。这个教学项目不支持多个进程同时写同一账本，不适合作为生产财务系统。
+类别：餐饮、交通、学习、其他。金额内部使用整数分，避免浮点累计误差。日期采用 ISO 格式；正常用法为 `YYYY-MM-DD`。`list` 和 `summary` 支持可选参数 `--month YYYY-MM`，只统计该月支出；无效月份会报错。`--file` 是全局参数，放在子命令之前。这个教学项目不支持多个进程同时写同一账本，不适合作为生产财务系统。
 
 示例数据跨越两个月，全部汇总为：
 
@@ -37,6 +41,16 @@ python3 -m unittest -v
 学习：39.00 元
 其他：6.00 元
 合计：79.50 元
+```
+
+只看 2026 年 11 月（`--month 2026-11`）：
+
+```text
+餐饮：12.50 元
+交通：4.00 元
+学习：0.00 元
+其他：6.00 元
+合计：22.50 元
 ```
 
 ## 给 Super-agent 的第一张 Issue
