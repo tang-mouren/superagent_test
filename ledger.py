@@ -60,6 +60,19 @@ def add_entry(path, amount, category, day, note):
     temporary.replace(path)
 
 
+def filter_month(entries, month):
+    """Keep only entries dated in the given YYYY-MM month."""
+    if month is None:
+        return entries
+    try:
+        prefix = date.fromisoformat(month + "-01").strftime("%Y-%m")
+    except ValueError as exc:
+        raise ValueError("月份格式不正确，应为 YYYY-MM") from exc
+    if not month.startswith(prefix):
+        raise ValueError("月份格式不正确，应为 YYYY-MM")
+    return [entry for entry in entries if entry["date"].startswith(prefix)]
+
+
 def summarize(entries):
     totals = {category: 0 for category in CATEGORIES}
     for entry in entries:
@@ -76,15 +89,16 @@ def main(argv=None):
     add.add_argument("--category", choices=CATEGORIES, required=True)
     add.add_argument("--date", default=date.today().isoformat(), help="日期 YYYY-MM-DD")
     add.add_argument("--note", default="")
-    commands.add_parser("list", help="查看全部支出")
-    commands.add_parser("summary", help="按类别汇总全部支出")
+    for command_name, help_text in (("list", "查看支出"), ("summary", "按类别汇总支出")):
+        command = commands.add_parser(command_name, help=help_text)
+        command.add_argument("--month", default=None, metavar="YYYY-MM", help="只看指定月份，例如 2026-11")
     args = parser.parse_args(argv)
     try:
         if args.command == "add":
             add_entry(args.file, args.amount, args.category, args.date, args.note)
             print("已添加支出")
             return 0
-        entries = load_entries(args.file)
+        entries = filter_month(load_entries(args.file), args.month)
         if args.command == "list":
             print("日期       类别  金额（元）  备注")
             for entry in sorted(entries, key=lambda row: row["date"]):
