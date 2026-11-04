@@ -7,7 +7,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from ledger import add_entry, load_entries, main, parse_amount, summarize
+from ledger import add_entry, filter_by_month, load_entries, main, parse_amount, summarize, validate_month
 
 
 class LedgerTests(unittest.TestCase):
@@ -67,6 +67,82 @@ class LedgerTests(unittest.TestCase):
             with contextlib.redirect_stdout(output):
                 self.assertEqual(main(["--file", str(path), "summary"]), 0)
             self.assertIn("合计：12.50 元", output.getvalue())
+
+    def test_validate_month(self):
+        self.assertEqual(validate_month("2026-11"), "2026-11")
+        self.assertEqual(validate_month("2026-02"), "2026-02")
+        for month in ("2026-13", "2026-1", "2026-00", "2026-11-01", "abc", "2026-02-30"):
+            with self.subTest(month=month), self.assertRaises(ValueError):
+                validate_month(month)
+
+    def test_filter_by_month(self):
+        entries = [
+            {"date": "2026-10-30", "category": "餐饮", "cents": 1800, "note": "晚饭"},
+            {"date": "2026-11-01", "category": "餐饮", "cents": 1250, "note": "午饭"},
+            {"date": "2025-11-01", "category": "其他", "cents": 100, "note": "去年同月"},
+            {"date": "2026-12-01", "category": "交通", "cents": 400, "note": "地铁"},
+        ]
+        self.assertEqual(filter_by_month(entries, "2026-11"), entries[1:2])
+        self.assertEqual(filter_by_month(entries, "2026-01"), [])
+
+    def test_cli_summary_month(self):
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            self.assertEqual(main(["--file", "examples/expenses.json", "summary", "--month", "2026-11"]), 0)
+        self.assertIn("合计：22.50 元", output.getvalue())
+
+    def test_cli_list_month_excludes_other_months(self):
+        output = io.StringIO()
+        with contextlib.redirect_stdout(output):
+            self.assertEqual(main(["--file", "examples/expenses.json", "list", "--month", "2026-11"]), 0)
+        text = output.getvalue()
+        self.assertIn("2026-11-01", text)
+        self.assertNotIn("2026-10-30", text)
+        self.assertNotIn("2025-11", text)
+
+    def test_cli_month_without_records(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "expenses.json"
+            path.write_text(json.dumps([
+                {"date": "2026-11-01", "category": "餐饮", "cents": 1250, "note": "午饭"}
+            ]), encoding="utf-8")
+            listing = io.StringIO()
+            with contextlib.redirect_stdout(listing):
+                self.assertEqual(main(["--file", str(path), "list", "--month", "2026-12"]), 0)
+            self.assertIn("暂无支出", listing.getvalue())
+            summary = io.StringIO()
+            with contextlib.redirect_stdout(summary):
+                self.assertEqual(main(["--file", str(path), "summary", "--month", "2026-12"]), 0)
+            self.assertIn("合计：0.00 元", summary.getvalue())
+
+    def test_cli_invalid_month_fails_without_change(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "expenses.json"
+            path.write_text(json.dumps([
+                {"date": "2026-11-01", "category": "餐饮", "cents": 1250, "note": "午饭"}
+            ]), encoding="utf-8")
+            before = path.read_bytes()
+            for month in ("2026-13", "2026-1"):
+                with self.subTest(month=month), contextlib.redirect_stdout(io.StringIO()):
+                    with self.assertRaises(SystemExit):
+                        main(["--file", str(path), "summary", "--month", month])
+            self.assertEqual(path.read_bytes(), before)
+
+    def test_cli_summary_month_keeps_cross_year_same_month_apart(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "expenses.json"
+            path.write_text(json.dumps([
+                {"date": "2025-12-31", "category": "餐饮", "cents": 500, "note": "去年十二月"},
+                {"date": "2026-01-01", "category": "餐饮", "cents": 700, "note": "今年一月"},
+            ]), encoding="utf-8")
+            output = io.StringIO()
+            with contextlib.redirect_stdout(output):
+                self.assertEqual(main(["--file", str(path), "summary", "--month", "2025-12"]), 0)
+            self.assertIn("合计：5.00 元", output.getvalue())
+            output = io.StringIO()
+            with contextlib.redirect_stdout(output):
+                self.assertEqual(main(["--file", str(path), "summary", "--month", "2026-01"]), 0)
+            self.assertIn("合计：7.00 元", output.getvalue())
 
 
 if __name__ == "__main__":

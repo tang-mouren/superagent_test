@@ -60,6 +60,23 @@ def add_entry(path, amount, category, day, note):
     temporary.replace(path)
 
 
+def filter_by_month(entries, month):
+    """Keep only entries in the given YYYY-MM month."""
+    return [entry for entry in entries if entry["date"][:7] == month]
+
+
+def validate_month(text):
+    """Return a normalized YYYY-MM string or raise ValueError."""
+    try:
+        parsed = date.fromisoformat(f"{text}-01")
+    except ValueError as exc:
+        raise ValueError(f"无效月份：{text}，应为 YYYY-MM") from exc
+    normalized = parsed.isoformat()[:7]
+    if normalized != text:
+        raise ValueError(f"无效月份：{text}，应为 YYYY-MM")
+    return normalized
+
+
 def summarize(entries):
     totals = {category: 0 for category in CATEGORIES}
     for entry in entries:
@@ -77,7 +94,9 @@ def main(argv=None):
     add.add_argument("--date", default=date.today().isoformat(), help="日期 YYYY-MM-DD")
     add.add_argument("--note", default="")
     commands.add_parser("list", help="查看全部支出")
-    commands.add_parser("summary", help="按类别汇总全部支出")
+    summary = commands.add_parser("summary", help="按类别汇总全部支出")
+    for command in (commands.choices["list"], summary):
+        command.add_argument("--month", default=None, help="按月筛选，格式 YYYY-MM")
     args = parser.parse_args(argv)
     try:
         if args.command == "add":
@@ -85,6 +104,9 @@ def main(argv=None):
             print("已添加支出")
             return 0
         entries = load_entries(args.file)
+        if args.month is not None:
+            month = validate_month(args.month)
+            entries = filter_by_month(entries, month)
         if args.command == "list":
             print("日期       类别  金额（元）  备注")
             for entry in sorted(entries, key=lambda row: row["date"]):
