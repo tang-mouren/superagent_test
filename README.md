@@ -23,6 +23,10 @@ python3 ledger.py add 12.50 --category 餐饮 --date 2026-11-03 --note 午饭
 python3 ledger.py list
 python3 ledger.py summary
 
+# 按月份筛选（YYYY-MM，list 与 summary 均支持）
+python3 ledger.py --file examples/expenses.json list --month 2026-11
+python3 ledger.py --file examples/expenses.json summary --month 2026-11
+
 # 运行测试；使用临时文件，不修改示例或个人账本
 python3 -m unittest -v
 ```
@@ -38,6 +42,8 @@ python3 -m unittest -v
 其他：6.00 元
 合计：79.50 元
 ```
+
+按月筛选时只统计该月记录，例如 `--month 2026-11` 的合计为 `22.50 元`；该月没有记录时，列表显示「暂无支出」，汇总为 `0.00 元`。无效月份（如 `2026-13`、`2026-1`）报错并退出码 2，不会改动数据。
 
 ## 给 Super-agent 的第一张 Issue
 
